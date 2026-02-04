@@ -1,58 +1,53 @@
 package HoangThiMyThanh.QuanLySach.service;
-
-import java.util.ArrayList;
-import java.util.List;
-
+import HoangThiMyThanh.QuanLySach.entities.Book;
+import HoangThiMyThanh.QuanLySach.repositories.IBookRepository;
+import jakarta.validation.constraints.NotNull;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import HoangThiMyThanh.QuanLySach.model.Book;
-
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 @Service
+@RequiredArgsConstructor
+@Transactional(isolation = Isolation.SERIALIZABLE,
+ rollbackFor = {Exception.class, Throwable.class})
 public class BookService {
-//Khai báo danh sách các quyển sách
-private List<Book> books = new ArrayList<>();
-
-//Lấy danh sách tất cả các quyển sách
-public List<Book> getAllBooks() {
-    return books;   
-}
-
-//Lấy danh sách theo ID
-public Book getBookById(int id) {
-    for (Book book : books) {
-        if (book.getId() == id) {
-            return book;
-        }
+ private final IBookRepository bookRepository;
+ public List<Book> getAllBooks(Integer pageNo, 
+ Integer pageSize, 
+ String sortBy) {
+ return bookRepository.findAllBooks(pageNo, pageSize, sortBy);
+ }
+ public Optional<Book> getBookById(Long id) {
+ return bookRepository.findById(id);
+ }
+public Book addBook(Book book) {
+        return bookRepository.save(book);
     }
-    return null; // Trả về null nếu không tìm thấy sách với ID đã cho
-}
 
+    public Book updateBook(@NotNull Book book) {
+        Book existingBook = bookRepository.findById(book.getId())
+                .orElse(null);
+        Objects.requireNonNull(existingBook).setTitle(book.getTitle());
+        existingBook.setAuthor(book.getAuthor());
+        existingBook.setPrice(book.getPrice());
+        existingBook.setCategory(book.getCategory());
+        return bookRepository.save(existingBook);
+ }
 
-//Thêm quyển sách mới
-public void addBook(Book book) {
-    books.add(book);
-}
-
-//Cập nhật thông tin quyển sách
-public boolean updateBook(int id, Book updatedBook) {
-    for (int i = 0; i < books.size(); i++) {
-        if (books.get(i).getId() == id) {
-            books.set(i, updatedBook);
-            return true; // Cập nhật thành công
-        }
+    public List<Book> searchBook(String keyword) {
+        return bookRepository.searchBook(keyword);
     }
-    return false; // Không tìm thấy sách với ID đã cho
-}
 
-//xoá sách theo id
-public boolean deleteBook(int id) {
-    for (int i = 0; i < books.size(); i++) {
-        if (books.get(i).getId() == id) {
-            books.remove(i);
-            return true; // Xoá thành công
-        }
+    public void deleteBookById(Long id) {
+        bookRepository.deleteById(id);
     }
-    return false; // Không tìm thấy sách với ID đã cho
-}
 
-
+    public long countBooks() {
+        return bookRepository.count();
+    }
 }

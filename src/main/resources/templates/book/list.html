@@ -1,55 +1,143 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Danh sách sách</title>
-    <th:block th:replace="~{layout :: link-css}"></th:block>
-    <th:block th:replace="~{layout :: custom-css}"></th:block>
+ <meta charset="UTF-8">
+ <meta http-equiv="X-UA-Compatible" content="IE=edge">
+ <meta name="viewport" content="width=device-width, initialscale=1.0">
+ <title>My Book List</title>
+ <th:block th:replace="~{layout::link-css}"></th:block>
+ <th:block th:replace="~{layout::custom-css}"></th:block>
 </head>
 <body>
-    <th:block th:replace="~{layout :: header}"></th:block>
+    <th:block th:replace="~{layout::header}"></th:block>
+<div class="container">
+ <div class="row">
+ <div class="col-md-12">
+ <nav class="navbar navbar-light">
+ <div class="container-fluid">
+ <h2>My Book List</h2>
+ <div class="d-flex align-items-center">
+  <form class="d-flex me-2" th:action="@{/books/search}" method="get">
+   <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" name="keyword">
+   <button class="btn btn-outline-success" type="submit">Search</button>
+  </form>
+  <a class="btn btn-success" sec:authorize="hasAnyAuthority('ADMIN')" th:href="@{/books/add}">Add Book</a>
+ </div>
+ </div>
+ </nav>
+ </div>
+ </div>
+ <table class="table">
+ <thead>
+ <tr>
+ <th><a th:href="@{/books(pageNo=${currentPage}, sortBy= 
+'id')}">Id</a></th>
+ <th><a th:href="@{/books(pageNo=${currentPage}, sortBy= 
+'title')}">Title</a></th>
+ <th><a th:href="@{/books(pageNo=${currentPage}, sortBy= 
+'author')}">Author</a></th>
+ <th><a th:href="@{/books(pageNo=${currentPage}, sortBy= 
+'price')}">Price</a></th>
+ <th><a th:href="@{/books(pageNo=${currentPage}, sortBy= 
+'category')}">Category</a></th>
+ <th sec:authorize="hasAnyAuthority('ADMIN')">Action</th>
+ </tr>
+ </thead>
+ <tbody id="book-table-body">
+ <tr th:each="book : ${books}" class="server-rendered">
+ <td th:text="${book.getId()}"></td>
+ <td th:text="${book.getTitle()}"></td>
+ <td th:text="${book.getAuthor()}"></td>
+ <td th:text="${book.getPrice()}"></td>
+ <td th:text="${book.category != null ? book.category.name : ''}"></td>
+ <td colspan="2">
+ <a class="btn btn-primary" sec:authorize="hasAnyAuthority('ADMIN')" th:href="@{/books/edit/{id}(id=${book.getId()})}">Edit</a>
+ <a class="btn btn-danger" sec:authorize="hasAnyAuthority('ADMIN')" th:href="@{/books/delete/{id}(id=${book.getId()})}" onclick="return confirm('Are you sure you want to delete this book?')">Delete</a>
+ <form th:action="@{/books/add-to-cart}" method="post" class="d-inline" sec:authorize="hasAnyAuthority('ADMIN','USER')">
+  <input type="hidden" name="id" th:value="${book.getId()}">
+  <input type="hidden" name="name" th:value="${book.getTitle()}">
+  <input type="hidden" name="price" th:value="${book.getPrice()}">
+  <button type="submit" class="btn btn-success" onclick="return confirm('Are you sure you want to add this book to cart?')">Add to cart</button>
+ </form>
+ </td>
+ </tr>
+ </tbody>
+ </table>
+</div>
+<nav aria-label="Page navigation example">
+ <ul class="pagination justify-content-center pagination-sm" 
+th:each="i : ${#numbers.sequence(0, totalPages)}">
+ <li class="page-item" th:classappend="${currentPage == i} ? 
+'active'">
+ <a class="page-link" th:href="@{/books(pageNo=${i})}" 
+th:text="${i}"></a>
+ </li>
+ </ul>
+</nav>
+<th:block th:replace="~{layout::footer}"></th:block>
 
-    <div class="container mt-4">
-        <h2 class="mb-3">Danh sách sách</h2>
-        <a th:href="@{/books/add}" class="btn btn-success mb-3">Thêm sách mới</a>
+<!-- Page-specific scripts: load books via API and support API delete (uses CSRF and isAdmin) -->
+<script th:inline="javascript">
+/*<![CDATA[*/
+$(document).ready(function () {
+    var csrfToken = $('meta[name="_csrf"]').attr('content');
+    var csrfHeader = $('meta[name="_csrf_header"]').attr('content');
 
-        <table class="table table-striped table-hover">
-            <thead class="table-dark">
-                <tr>
-                    <th>ID</th>
-                    <th>Tiêu đề</th>
-                    <th>Tác giả</th>
-                    <th>Giá</th>
-                    <th>Danh mục</th>
-                    <th>Hành động</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="book : ${books}">
-                    <td th:text="${book.id}"></td> <!-- Dùng .id thay getId() -->
-                    <td th:text="${book.title}"></td>
-                    <td th:text="${book.author}"></td>
-                    <td th:text="${book.price}"></td>
-                    <td th:text="${book.category}"></td>
-                    <td>
-                        <a class="btn btn-primary btn-sm" th:href="@{/books/edit/{id}(id=${book.id})}">Sửa</a>
-                        <a class="btn btn-danger btn-sm" 
-                           th:href="@{/books/delete/{id}(id=${book.id})}"
-                           onclick="return confirm('Bạn chắc chắn muốn xóa sách này?')">Xóa</a>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+    function renderBooks(data) {
+        var trHTML = '';
+        $.each(data, function (i, item) {
+            trHTML += '<tr id="book-' + item.id + '">'
+                + '<td>' + (item.id || '') + '</td>'
+                + '<td>' + (item.title || '') + '</td>'
+                + '<td>' + (item.author || '') + '</td>'
+                + '<td>' + (item.price || '') + '</td>'
+                + '<td>' + (item.category || '') + '</td>';
+            if (isAdmin) {
+                trHTML += '<td>'
+                    + '<a href="/books/edit/' + item.id + '" class="btn btn-sm btn-primary me-1">Edit</a>'
+                    + '<a href="#" class="btn btn-sm btn-danger" onclick="apiDeleteBook(' + item.id + '); return false;">Delete</a>'
+                    + '</td>';
+            } else {
+                trHTML += '<td></td>';
+            }
+            trHTML += '</tr>';
+        });
+        $('#book-table-body').empty().append(trHTML);
+    }
 
-        <p th:if="${books.isEmpty()}" class="text-muted">Chưa có sách nào. Hãy thêm mới!</p>
-    </div>
+    // load books via API
+    $.ajax({
+        url: '/api/v1/books',
+        type: 'GET',
+        dataType: 'json',
+        success: function (data) {
+            renderBooks(data);
+        },
+        error: function (xhr) {
+            console.error('Failed to load books:', xhr);
+        }
+    });
 
-    <th:block th:replace="~{layout :: footer}"></th:block>
-
-    <!-- Bootstrap JS bundle (cần cho navbar responsive) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" 
-            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" 
-            crossorigin="anonymous"></script>
+    // expose delete function globally
+    window.apiDeleteBook = function (id) {
+        if (!confirm('Are you sure you want to delete this book?')) return;
+        $.ajax({
+            url: '/api/v1/books/' + id,
+            type: 'DELETE',
+            beforeSend: function (xhr) {
+                if (csrfHeader && csrfToken) xhr.setRequestHeader(csrfHeader, csrfToken);
+            },
+            success: function () {
+                alert('Book deleted successfully!');
+                $('#book-' + id).remove();
+            },
+            error: function (xhr) {
+                alert('Failed to delete book: ' + (xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : xhr.statusText));
+            }
+        });
+    };
+});
+/*]]>*/
+</script>
 </body>
 </html>

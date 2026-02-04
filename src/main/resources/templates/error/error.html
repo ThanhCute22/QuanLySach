@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ứng dụng lỗi</title>
+    <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet" />
+</head>
+<body class="container py-5">
+    <h1 class="text-danger">Đã có lỗi xảy ra</h1>
+    <p>Xin lỗi, một lỗi nội bộ đã xảy ra. Vui lòng thử lại sau hoặc liên hệ quản trị viên.</p>
+    <div th:if="${message}">
+        <h5>Chi tiết:</h5>
+        <pre th:text="${message}"></pre>
+    </div>
+    <a class="btn btn-primary" th:href="@{/}">Về trang chủ</a>
+</body>
+</html>
