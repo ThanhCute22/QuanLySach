@@ -31,12 +31,17 @@ public class SecurityConfig {
 public SecurityFilterChain securityFilterChain(@NotNull HttpSecurity http,
     org.springframework.beans.factory.ObjectProvider<ClientRegistrationRepository> clientRegProvider
 ) throws Exception {
+    // Disable CSRF for API endpoints so non-browser clients can POST/PUT/DELETE
+    http.csrf(csfr -> csfr.ignoringRequestMatchers(new org.springframework.security.web.util.matcher.AntPathRequestMatcher("/api/**")));
+
     http.authorizeHttpRequests(auth -> auth
+            // Allow anonymous GET access to API endpoints, require auth for mutating requests
+            .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/**").permitAll()
             .requestMatchers("/css/**", "/js/**", "/", "/register", "/error", "/oauth2/**", "/oauth2/authorization/**")
             .permitAll()
             .requestMatchers("/books/edit/**", "/books/add", "/books/delete")
             .hasAuthority("ADMIN")
-            .requestMatchers("/books", "/cart", "/cart/**", "/api/**")
+            .requestMatchers("/books", "/cart", "/cart/**")
             .hasAnyAuthority("ADMIN", "USER")
             .requestMatchers("/api/**")
             .hasAnyAuthority("ADMIN", "USER")
